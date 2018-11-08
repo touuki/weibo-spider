@@ -8,7 +8,7 @@ import socket
 import util
 socket.setdefaulttimeout(5)
 
-global client,COUNT
+global COUNT
 COUNT = 0
 
 client = util.getWeiboClient()
@@ -39,7 +39,6 @@ def user_weibo_update(db,uid,min_id=None):
 		if min_id is None and read_count >= 8:
 			break
 
-		global client
 		data = client.getIndex_list(uid,page)
 		#已扫描完退出，访问太频繁有几率不返回内容，故多请求几次
 		if data['ok']==0 :
@@ -80,7 +79,6 @@ def user_weibo_update(db,uid,min_id=None):
 def user_update(db,id):
 	cursor = db.cursor()
 
-	global client
 	res = client._getIndex_user(id)
 	try:
 		data = json.loads(res)['data']
@@ -138,7 +136,6 @@ def scan_user_all(db,uid,restart=False):
 		#if COUNT > 800:
 		#	exit()
 
-		global client
 		data = client.getIndex_list(uid,page)
 		#已扫描完退出，访问太频繁有几率不返回内容，故多请求几次
 		if data['ok']==0 :
@@ -187,7 +184,6 @@ def scan_user_all(db,uid,restart=False):
 		raise
 
 def get_retweeted_status(id):
-	global client
 	resStr = client._status(id)
 	searchObj = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',resStr)
 	if searchObj:
@@ -208,7 +204,6 @@ def weibo_insert(db,id):
 
 	cursor = db.cursor()
 	#未登录情况下访问频繁会403，已登录情况下访问频繁retweeted_status的id等内容会为空
-	global client
 	resStr = client._status(id)
 	searchObj = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',resStr)
 	if searchObj:
