@@ -1,0 +1,4 @@
+__pycache__
+*.cookie
+config.ini
+/tmp/
