@@ -5,13 +5,14 @@ from weibo import MWeiboCn
 from functools import reduce
 import urllib.request
 import socket
-import util
+import config
 socket.setdefaulttimeout(5)
 
-global COUNT
-COUNT = 0
+global count
+count = 0
 
-client = util.getWeiboClient()
+confirm_num = config.get_int('scan','confirm_num')
+client = config.get_weibo_client()
 if not client.st:
 	client.login()
 
@@ -36,10 +37,10 @@ def user_weibo_update(db,uid,min_id=None):
 	not_ok_count = 0
 	idcount = 0
 	while True:
-		if min_id is None and read_count >= 8:
+		if min_id is None and read_count >= confirm_num:
 			break
 
-		data = client.getIndex_list(uid,page)
+		data = client.getIndex_contents(uid,page)
 		#已扫描完退出，访问太频繁有几率不返回内容，故多请求几次
 		if data['ok']==0 :
 			if not_ok_count<2 :
@@ -63,11 +64,11 @@ def user_weibo_update(db,uid,min_id=None):
 				if 'retweeted_status' in card['mblog']:
 					rid = card['mblog']['retweeted_status']['id']
 					if not cursor.execute("SELECT id FROM weibo_index WHERE id=%s",(rid,)):
-						print(str(COUNT) + '. Updating retweeted_status: ' + users[0][1] + ' weibo_id: ' + id + "  " + rid)
+						print(str(count) + '. Updating retweeted_status: ' + users[0][1] + ' weibo_id: ' + id + "  " + rid)
 						weibo_insert(db,rid)
 
 				if not cursor.execute("SELECT id FROM weibo_index WHERE id=%s",(id,)):
-					print(str(COUNT) + '. Updating user: ' + users[0][1] + ' weibo_id: ' + id)
+					print(str(count) + '. Updating user: ' + users[0][1] + ' weibo_id: ' + id)
 					weibo_insert(db,id)
 				else:
 					read_count += 1
@@ -131,12 +132,12 @@ def scan_user_all(db,uid,restart=False):
 	not_ok_count = 0
 	while True:
 		#获取微博列表
-		#global COUNT
-		#COUNT += 1
-		#if COUNT > 800:
+		#global count
+		#count += 1
+		#if count > 800:
 		#	exit()
 
-		data = client.getIndex_list(uid,page)
+		data = client.getIndex_contents(uid,page)
 		#已扫描完退出，访问太频繁有几率不返回内容，故多请求几次
 		if data['ok']==0 :
 			if not_ok_count<2 :
@@ -158,12 +159,12 @@ def scan_user_all(db,uid,restart=False):
 						rid = get_retweeted_status(id)
 					cursor.execute("SELECT id FROM weibo_index WHERE id=%s",(rid,))
 					if not cursor.fetchall():
-						print(str(COUNT) + '. Updating retweeted_status: ' + users[0][1] + ' weibo_id: ' + id + '  ' + rid)
+						print(str(count) + '. Updating retweeted_status: ' + users[0][1] + ' weibo_id: ' + id + '  ' + rid)
 						weibo_insert(db,rid)
 
 				cursor.execute("SELECT id FROM weibo_index WHERE id=%s",(id,))
 				if not cursor.fetchall():
-					print(str(COUNT) + '. Updating user: ' + users[0][1] + ' weibo_id: ' + id)
+					print(str(count) + '. Updating user: ' + users[0][1] + ' weibo_id: ' + id)
 					weibo_insert(db,id)
 
 		#更新扫描页面
@@ -184,53 +185,38 @@ def scan_user_all(db,uid,restart=False):
 		raise
 
 def get_retweeted_status(id):
-	resStr = client._status(id)
-	searchObj = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',resStr)
-	if searchObj:
-		res = searchObj.group(1)
-		data = json.loads(res)[0]
+	data = client.status(id)
+	if data is None:
+		raise Exception('data error')
+	else:
 		if 'retweeted_status' in data['status']:
 			return data['status']['retweeted_status']['id']
 		else:
 			return None
-	else:
-		raise Exception('data error')
 	
 
 def weibo_insert(db,id):
 
-	global COUNT
-	COUNT += 1
+	global count
+	count += 1
 
 	cursor = db.cursor()
 	#未登录情况下访问频繁会403，已登录情况下访问频繁retweeted_status的id等内容会为空
-	resStr = client._status(id)
-	searchObj = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',resStr)
-	if searchObj:
-		res = searchObj.group(1)
-		#data = json.loads(res)[0]
-		#if 'retweeted_status' in data['status']:
-		#	weibo_insert(db,data['status']['retweeted_status']['id'])
-		
+	result = client._status(id)
+	search = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',result)
+	if search:
+		insert_data = search.group(1)
 
-		with urllib.request.urlopen('http://localhost/weibo/api/insert_weibo.php',urllib.parse.urlencode({"data":res}).encode("ascii")) as f:
-			returnStr = f.read().decode()
-			returnObj = json.loads(returnStr)
-			if returnObj['errorCode'] != "0" and returnObj['errorCode'] != "101":
-				raise Exception(returnStr)
-		'''
-		if cursor.execute("SELECT id FROM weibo_index WHERE id=%s",(data['status']['id'],)):
-			cursor.execute("UPDATE weibo_index SET " + reduce(lambda x,y:x+y,[k + "=%(" + k + ")s," for k in insert_data])[:-1] 
-				+ " WHERE id=%(id)s",insert_data)
-		else:
-			cursor.execute("INSERT INTO weibo_index ( " + reduce(lambda x,y:x+y,[ k + "," for k in insert_data])[:-1] 
-				+ " ) VALUES ( " + reduce(lambda x,y:x+y,[ "%(" + k + ")s," for k in insert_data])[:-1] + " )",insert_data)
-		'''
+		with urllib.request.urlopen('http://localhost/weibo/api/insert_weibo.php',urllib.parse.urlencode({"data":insert_data}).encode("ascii")) as f:
+			reponse = f.read().decode()
+			insert_result = json.loads(reponse)
+			if insert_result['errorCode'] != "0" and insert_result['errorCode'] != "101":
+				raise Exception(reponse)
 
 if __name__ == '__main__':
-	db = util.getDbConnect()
-	user_list = util.getUserlist()
-	for uid in user_list:
+	db = config.get_db_connect()
+	users = config.get_scan_users()
+	for uid in users:
 		scan_user_all(db,uid,restart=False)
 		#user_weibo_update(db,uid,min_id="4282634743679613")
 	db.close()

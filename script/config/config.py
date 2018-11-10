@@ -3,62 +3,54 @@ import weibo
 import configparser
 import os
 
-dirname, _ = os.path.split(os.path.abspath(__file__))
-default_filepath = '%s/config.ini' % (dirname,)
+global _config
+_default_filepath = os.path.join(os.path.dirname(__file__),'config.ini')
 
-class Config:
-	def __init__(self,filepath = None):
-		self._config = {
-				'db':{
-					'host':'localhost',
-					'username':'root',
-					'password':'123456',
-					'port':3306,
-					'dbname':'WEIBO',
-					'charset':'utf8mb4'
-					},
-				'weibo':{
-					'username':'',
-					'password':''
-					},
-				'scan':{
-					'userlist':'',
-					'normal_interval':1,
-					'error_interval':5,
-					'confirm_num':6
-					}
-				}
+def default_init():
+	global _config
+	_config = {}
+	cf = configparser.ConfigParser()
+	cf.read(os.path.join(os.path.dirname(__file__),'config.default.ini'))
+	for section in cf.sections():
+		_config[section] = {}
+		for key,val in cf.items(section):
+			_config[section][key] = val	
 
-		cf = configparser.ConfigParser()
-		if filepath is None:
-			cf.read(default_filepath)
+def init(filepath = None):
+	global _config
+	default_init()
+	cf = configparser.ConfigParser()
+	if filepath is None:
+		cf.read(_default_filepath)
+	else:
+		cf.read(filepath)
+	for section in cf.sections():
+		if section in _config:
+			for key,val in cf.items(section):
+				_config[section][key] = val
 		else:
-			cf.read(filepath)
-		for section in cf.sections():
-			if section in self._config:
-				for key,val in cf.items(section):
-					self._config[section][key] = val
-			else:
-				print('WARING: Section %s is unused in config file.' % (section,))
+			print('WARING: Section %s is unused in config file.' % (section,))
 
-	def get(self,section = None, key = None):
-		if section is None:
-			return self._config
+def get(section = None, key = None):
+	if section is None:
+		return _config
+	else:
+		if key is None:
+			return _config[section]
 		else:
-			if key is None:
-				return self._config[section]
-			else:
-				return self._config[section][key]
+			return _config[section][key]
 
-	def getDbConnect(self):
-		db = self._config['db']
-		return pymysql.connect(db['host'],db['username'],db['password'],db['dbname'],port=db['port'],charset=db['charset'])
+def get_int(section, key):
+	return int(get(section,key))
 
-	def getWeiboClient(self):
-		wb = self._config['weibo']
-		return weibo.MWeiboCn(wb['username'],wb['password'])
+def get_db_connect():
+	db = _config['db']
+	return pymysql.connect(db['host'],db['username'],db['password'],db['dbname'],port=db['port'],charset=db['charset'])
 
-	def getUserlist(self):
-		return self._config['scan']['userlist'].split(',')
+def get_weibo_client():
+	wb = _config['weibo']
+	return weibo.MWeiboCn(wb['username'],wb['password'])
 
-default = Config() 
+def get_scan_users():
+	return _config['scan']['users'].split(',')
+

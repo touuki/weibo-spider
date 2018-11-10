@@ -1,1 +1,3 @@
-from .config import (Config,default)
+from .config import *
+
+init()
