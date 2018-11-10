@@ -45,8 +45,8 @@ class MWeiboCn:
 		while True:
 			try:
 				time.sleep(1)            #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<时间间隔
-				res = self.opener.open(url,data)
-				reStr = res.read().decode()
+				response = self.opener.open(url,data)
+				result = response.read().decode()
 				break
 			except socket.timeout as e:
 				print("url %s timeout!" % (url,))
@@ -64,7 +64,7 @@ class MWeiboCn:
 		self.cookiejar.save()
 		for header in headers:
 			self.opener.addheaders.pop()
-		return reStr
+		return result
 
 	def set_cookie(self, name, value, expires=None):
 		'''手动设置cookie'''
@@ -125,27 +125,27 @@ class MWeiboCn:
 		'hff':'',
 		'hfp':''}
 		headers = [('Referer','https://passport.weibo.cn/signin/login?entry=mweibo&res=wel&wm=3349&r=http%3A%2F%2Fm.weibo.cn%2F')]
-		resStr = self._send('https://passport.weibo.cn/sso/login',data,headers)
+		result = self._send('https://passport.weibo.cn/sso/login',data,headers)
 		if self.debug_level > 0:
-			print(resStr)
-		jsonData=json.loads(resStr)
-		weiboComUrl = jsonData['data']['crossdomainlist']['weibo.com']
-		sinaComCnUrl = jsonData['data']['crossdomainlist']['sina.com.cn']
-		weiboCnUrl = jsonData['data']['crossdomainlist']['weibo.cn']
-		self._send(weiboComUrl)
-		self._send(sinaComCnUrl)
-		self._send(weiboCnUrl)
+			print(result)
+		result_data=json.loads(result)
+		weibo_com_url = result_data['data']['crossdomainlist']['weibo.com']
+		sina_com_cn_url = result_data['data']['crossdomainlist']['sina.com.cn']
+		weibo_cn_url = result_data['data']['crossdomainlist']['weibo.cn']
+		self._send(weibo_com_url)
+		self._send(sina_com_cn_url)
+		self._send(weibo_cn_url)
 		self.update_st()
 
-	def _getIndex_list(self,uid,page):
+	def _getIndex_contents(self,uid,page):
 		'''return json string. 微博用户的列表'''
 		data={'uid':uid,'containerid':'107603%s' % uid,'page':page}
 		return self._send('https://m.weibo.cn/api/container/getIndex',data,method='GET')
 
-	def getIndex_list(self,uid,page):
-		resStr = self._getIndex_list(uid,page)
-		jsonData = json.loads(resStr)
-		return jsonData
+	def getIndex_contents(self,uid,page):
+		result = self._getIndex_contents(uid,page)
+		result_data = json.loads(result)
+		return result_data
 		
 	def _getIndex_user(self,uid):
 		'''return json string. 微博用户信息'''
@@ -157,10 +157,10 @@ class MWeiboCn:
 		return self._send('https://m.weibo.cn/status/%s' % id)
 
 	def status(self,id):
-		resStr = self._status(id)
-		searchObj = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',resStr)
-		if searchObj:
-			return json.loads(searchObj.group(1))[0]
+		result = self._status(id)
+		search = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',result)
+		if search:
+			return json.loads(search.group(1))[0]
 		else:
 			return None
 
@@ -202,10 +202,10 @@ class MWeiboCn:
 	def home_groupList(self):
 		if not self.st:
 			self.login()
-		resStr = self._send('https://m.weibo.cn/home/groupList')
-		searchObj = re.search(r'window\.\$render_data = ([\s\S]*?);</script>',resStr)
-		if searchObj:
-			return searchObj.group(1)
+		result = self._send('https://m.weibo.cn/home/groupList')
+		search = re.search(r'window\.\$render_data = ([\s\S]*?);</script>',result)
+		if search:
+			return search.group(1)
 		else:
 			return None
 
@@ -222,23 +222,23 @@ class MWeiboCn:
 	def shift_to_all(self):
 		if not self.st:
 			self.login()
-		jsonData = self.home_render_data()
+		result_data = self.home_render_data()
 		self.set_cookie('H5_INDEX','0_all')
-		self.set_cookie('H5_INDEX_TITLE',urllib.parse.quote(jsonData['stage']['home'][0]['userName']))
+		self.set_cookie('H5_INDEX_TITLE',urllib.parse.quote(result_data['stage']['home'][0]['userName']))
 
 	def home_render_data(self):
-		resStr = self._send('https://m.weibo.cn')
-		searchObj = re.search(r'window\.\$render_data = ([\s\S]*?);</script>',resStr)
-		return demjson.decode(searchObj.group(1))
+		result = self._send('https://m.weibo.cn')
+		search = re.search(r'window\.\$render_data = ([\s\S]*?);</script>',result)
+		return demjson.decode(search.group(1))
 
 	def config(self):
 		'''{"login":true,"st":"a64cf0","uid":"5853763310"}'''
 		return self._send('https://m.weibo.cn/api/config')
 
 	def update_st(self):
-		jsonData = json.loads(self.config())
-		if jsonData['data']['login']:
-			self.st = jsonData['data']['st']
+		result_data = json.loads(self.config())
+		if result_data['data']['login']:
+			self.st = result_data['data']['st']
 		else:
 			self.st = None
 		return self.st
@@ -253,9 +253,9 @@ class MWeiboCn:
 
 	def comment(self,id,content):
 		self.update_st()
-		resStr = self._comments_create(id,content,self.st)
-		jsonData = json.loads(resStr)
-		return jsonData
+		result = self._comments_create(id,content,self.st)
+		result_data = json.loads(result)
+		return result_data
 
 	def _statuses_repost(self,id,content,st):
 		'''转发'''
@@ -305,9 +305,9 @@ class MWeiboCn:
 
 	def update(self,content):
 		self.update_st()
-		resStr = self._update(content,self.st)
-		jsonData = json.loads(resStr)
-		return jsonData
+		result = self._update(content,self.st)
+		result_data = json.loads(result)
+		return result_data
 
 	def delMyMblog(self,id):
 		'''删除微博'''

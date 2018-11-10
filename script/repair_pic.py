@@ -1,11 +1,11 @@
-import util
+import config
 import subprocess
 import pipes
 import multiprocessing
 import time
 
 def download(pid,url,dr):
-	db = util.getDbConnect()
+	db = config.get_db_connect()
 	cursor = db.cursor()
 	try:
 		typ = url[url.rindex(r'.'):]
@@ -26,16 +26,16 @@ def download(pid,url,dr):
 
 num_pro = 10
 pool = multiprocessing.Pool(processes = num_pro)
-db = util.getDbConnect()
+db = config.get_db_connect()
 cursor = db.cursor()
 cursor.execute("SELECT pid,url FROM weibo_pic_orj360 WHERE status=2")
-pic_list = cursor.fetchall()
-for pid,url in pic_list:
+pics = cursor.fetchall()
+for pid,url in pics:
 	pool.apply_async(download,(pid,url,"orj360"))
 
 cursor.execute("SELECT pid,url FROM weibo_pic_large WHERE status=2")
-pic_list = cursor.fetchall()
-for pid,url in pic_list:
+pics = cursor.fetchall()
+for pid,url in pics:
 	pool.apply_async(download,(pid,url,"large"))
 
 db.close()
