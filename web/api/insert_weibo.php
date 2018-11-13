@@ -15,7 +15,7 @@ $results = array();
 try {
   //$res = file_get_contents("php://input"); //取得json数据
   $res = $_POST['data'];
-  $data = json_decode($res, TRUE)[0];   //格式化
+  $data = json_decode($res, TRUE);   //格式化
 
   $conn = new PDO("mysql:host={$mysql['host']};dbname=$dbname;charset=utf8mb4", $mysql['user'], $mysql['password']);
   $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

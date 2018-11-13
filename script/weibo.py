@@ -4,7 +4,15 @@ import os, json, time, re, socket, ssl
 import demjson
 
 class MWeiboCn:
-	def __init__(self,username,password,cookie_filepath='weibo.cookie',proxy_handler=None):
+	def __init__(self,username,password,proxy_handler=None,cookie_filepath='weibo.cookie',
+		normal_request_interval=1,error_request_interval=5,auto_retry=True,retry_times=5):
+
+		self.error_count = 0
+		self.normal_request_interval = normal_request_interval
+		self.error_request_interval = error_request_interval
+		self.auto_retry = auto_retry
+		self.retry_times = retry_times
+
 		self.debug_level = 0
 		self.username = username
 		self.password = password
@@ -42,28 +50,39 @@ class MWeiboCn:
 		else:
 			data = None
 
-		while True:
-			try:
-				time.sleep(1)            #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<时间间隔
-				response = self.opener.open(url,data)
-				result = response.read().decode()
-				break
-			except socket.timeout as e:
-				print("url %s timeout!" % (url,))
-				time.sleep(5)
-			except (urllib.error.URLError,ssl.SSLWantReadError) as e:
-				print(e)
-				time.sleep(5)
-			except urllib.error.HTTPError as e:
-				if e.code == 400:
-					print(e)
-					time.sleep(20)
-				else:
-					raise e
-				
-		self.cookiejar.save()
-		for header in headers:
-			self.opener.addheaders.pop()
+		try:
+			while True:
+				try:
+					response = self.opener.open(url,data)
+					result = response.read().decode()
+					self.error_count = 0
+					time.sleep(self.normal_request_interval)            #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<时间间隔
+					break
+				except socket.timeout as e:
+					self.error_count += 1
+					if self.auto_retry and self.error_count <= self.retry_times:
+						print("url %s timeout!" % (url,))
+						time.sleep(self.error_request_interval)
+					else:
+						raise e
+				except (urllib.error.URLError,ssl.SSLWantReadError) as e:
+					self.error_count += 1
+					if self.auto_retry and self.error_count <= self.retry_times:
+						print(e)
+						time.sleep(self.error_request_interval)
+					else:
+						raise e
+				except urllib.error.HTTPError as e:
+					self.error_count += 1
+					if e.code == 400 and self.auto_retry and self.error_count <= self.retry_times:
+						print(e)
+						time.sleep(self.error_request_interval)
+					else:
+						raise e
+		finally:		
+			self.cookiejar.save()
+			for header in headers:
+				self.opener.addheaders.pop()
 		return result
 
 	def set_cookie(self, name, value, expires=None):
@@ -156,11 +175,14 @@ class MWeiboCn:
 		'''return json string. 单条微博信息'''
 		return self._send('https://m.weibo.cn/status/%s' % id)
 
-	def status(self,id):
+	def status(self,id,decode=True):
 		result = self._status(id)
-		search = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',result)
+		search = re.search(r'var \$render_data = \[([\s\S]*)\]\[0\] \|\| {};',result)
 		if search:
-			return json.loads(search.group(1))[0]
+			if decode:
+				return json.loads(search.group(1))
+			else:
+				return search.group(1)
 		else:
 			return None
 
