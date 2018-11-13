@@ -2,3 +2,5 @@ __pycache__
 *.cookie
 config.ini
 /tmp/
+*.sublime-project
+*.sublime-workspace

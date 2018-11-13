@@ -22,15 +22,6 @@ def user_weibo_update(db,uid,min_id=None):
 	user_update(db,uid)
 	cursor.execute("SELECT id,screen_name FROM weibo_user WHERE id=%s",(uid,))
 	users = cursor.fetchall()
-	
-	'''
-	cursor.execute("SELECT id FROM weibo_index WHERE user_id=%s ORDER BY id DESC LIMIT 1",(uid,))
-	last_id = cursor.fetchall()
-	if last_id:
-		last_id = last_id[0][0]
-	else:
-		last_id = 0
-	'''
 
 	page = 1
 	read_count = 0
@@ -202,12 +193,10 @@ def weibo_insert(db,id):
 
 	cursor = db.cursor()
 	#未登录情况下访问频繁会403，已登录情况下访问频繁retweeted_status的id等内容会为空
-	result = client._status(id)
-	search = re.search(r'var \$render_data = ([\s\S]*)\[0\] \|\| {};',result)
-	if search:
-		insert_data = search.group(1)
 
-		with urllib.request.urlopen('http://localhost/weibo/api/insert_weibo.php',urllib.parse.urlencode({"data":insert_data}).encode("ascii")) as f:
+	content = client.status(id,decode=False)
+	if content is not None:
+		with urllib.request.urlopen('http://localhost/weibo/api/insert_weibo.php',urllib.parse.urlencode({"data":content}).encode("ascii")) as f:
 			reponse = f.read().decode()
 			insert_result = json.loads(reponse)
 			if insert_result['errorCode'] != "0" and insert_result['errorCode'] != "101":

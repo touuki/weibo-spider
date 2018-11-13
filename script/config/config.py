@@ -3,54 +3,28 @@ import weibo
 import configparser
 import os
 
-global _config
-_default_filepath = os.path.join(os.path.dirname(__file__),'config.ini')
+global _cf
+_cf = configparser.ConfigParser()
 
 def default_init():
-	global _config
-	_config = {}
-	cf = configparser.ConfigParser()
-	cf.read(os.path.join(os.path.dirname(__file__),'config.default.ini'))
-	for section in cf.sections():
-		_config[section] = {}
-		for key,val in cf.items(section):
-			_config[section][key] = val	
+	_cf.read(os.path.join(os.path.dirname(__file__),'config.default.ini'))
 
 def init(filepath = None):
-	global _config
 	default_init()
-	cf = configparser.ConfigParser()
 	if filepath is None:
-		cf.read(_default_filepath)
+		_cf.read(os.path.join(os.path.dirname(__file__),'config.ini'))
 	else:
-		cf.read(filepath)
-	for section in cf.sections():
-		if section in _config:
-			for key,val in cf.items(section):
-				_config[section][key] = val
-		else:
-			print('WARING: Section %s is unused in config file.' % (section,))
+		_cf.read(filepath)
 
-def get(section = None, key = None):
-	if section is None:
-		return _config
-	else:
-		if key is None:
-			return _config[section]
-		else:
-			return _config[section][key]
-
-def get_int(section, key):
-	return int(get(section,key))
+def get_parser():
+	return _cf
 
 def get_db_connect():
-	db = _config['db']
-	return pymysql.connect(db['host'],db['username'],db['password'],db['dbname'],port=db['port'],charset=db['charset'])
+	return pymysql.connect(_cf.get('db','host'),_cf.get('db','username'),_cf.get('db','password'),_cf.get('db','dbname'),port=_cf.getint('db','port'),charset=_cf.get('db','charset'))
 
 def get_weibo_client():
-	wb = _config['weibo']
-	return weibo.MWeiboCn(wb['username'],wb['password'])
+	return weibo.MWeiboCn(_cf.get('weibo','username'),_cf.get('weibo','password'))
 
 def get_scan_users():
-	return _config['scan']['users'].split(',')
+	return _cf.get('scan','users').split(',')
 
