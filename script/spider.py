@@ -8,13 +8,27 @@ import socket
 import config
 socket.setdefaulttimeout(5)
 
+def get_weibo_client():
+	return weibo.MWeiboCn(
+		username=_cf.get('weibo','username'),
+		password=_cf.get('weibo','password'),
+		proxy_handler=get_proxy_handler(),
+		cookie_file=_cf.get('weibo','cookie_file'),
+		normal_request_interval=_cf.getint('scan','normal_request_interval'),
+		error_request_interval=_cf.getint('scan','error_request_interval'),
+		auto_retry=_cf.getboolean('scan','auto_retry'),
+		retry_times=_cf.getint('scan','retry_times')
+		)
+
 global count
 count = 0
-
-confirm_num = config.get_int('scan','confirm_num')
+config.init()
+confirm_num = config.getint('scan','confirm_num')
 client = config.get_weibo_client()
 if not client.st:
 	client.login()
+
+
 
 def user_weibo_update(db,uid,min_id=None):
 	cursor = db.cursor()
