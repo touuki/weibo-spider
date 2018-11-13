@@ -4,7 +4,7 @@ import os, json, time, re, socket, ssl
 import demjson
 
 class MWeiboCn:
-	def __init__(self,username,password,proxy_handler=None,cookie_filepath='weibo.cookie',
+	def __init__(self,username,password,proxy_handler=None,cookie_file='weibo.cookie',
 		normal_request_interval=1,error_request_interval=5,auto_retry=True,retry_times=5):
 
 		self.error_count = 0
@@ -16,8 +16,8 @@ class MWeiboCn:
 		self.debug_level = 0
 		self.username = username
 		self.password = password
-		self.cookiejar = http.cookiejar.LWPCookieJar(cookie_filepath)
-		if os.path.exists(cookie_filepath):
+		self.cookiejar = http.cookiejar.LWPCookieJar(cookie_file)
+		if os.path.exists(cookie_file):
 			self.cookiejar.load()
 		cookie_support = urllib.request.HTTPCookieProcessor(self.cookiejar)
 		self.opener = urllib.request.build_opener(cookie_support)
@@ -173,6 +173,7 @@ class MWeiboCn:
 		
 	def _status(self,id):
 		'''return json string. 单条微博信息'''
+		#return self._send('https://m.weibo.cn/detail/%s' % id)
 		return self._send('https://m.weibo.cn/status/%s' % id)
 
 	def status(self,id,decode=True):
@@ -187,7 +188,7 @@ class MWeiboCn:
 			return None
 
 	def attitudes_show(self,id,page):
-		'''return json string. 微博评论'''
+		'''return json string. 微博点赞'''
 		data={'id':id,'page':page}
 		return self._send('https://m.weibo.cn/api/attitudes/show',data,method='GET')
 
