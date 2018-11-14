@@ -2,23 +2,23 @@ import urllib.request
 import random
 import abc
 
-class Proxy:
+class Generator:
 	@abc.abstractmethod
-	def get_proxy_handler(self):
+	def get(self):
 		pass
 
-class DefaultProxy(Proxy):
-	def get_proxy_handler(self):
+class NoneGenerator(Generator):
+	def get(self):
 		return None
 
-class LuminatiProxy(Proxy):
+class LuminatiGenerator(Generator):
 	def __init__(self,customer,zone,password,route_err='pass_dyn'):
 		self.customer = customer
 		self.zone = zone
 		self.password = password
 		self.route_err = route_err
 
-	def get_proxy_handler(self,session = None):
+	def get(self,session = None):
 		if session is None:
 			session = '{:06d}'.format(random.randint(0,999999))
 		username = 'lum-customer-{}-zone-{}-session-{}-route_err-{}'.format(self.customer,self.zone,session,self.route_err)

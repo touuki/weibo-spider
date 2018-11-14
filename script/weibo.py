@@ -112,7 +112,7 @@ class MWeiboCn:
 
 	def is_logined(self):
 		'''判断登录'''
-		self.update_st()
+		#self.update_st()
 		return True if self.st else False
 
 	def login(self):

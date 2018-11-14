@@ -1,6 +1,6 @@
-import proxy as _proxy
+import generator as _generator
 
-def get_proxy(class_name='DefaultProxy',*args,**kwargs):
-	proxy = getattr(_proxy, class_name)
-	assert ischildof(proxy, _proxy.Proxy)
-	return proxy(*args,**kwargs)
+def get_generator(name='None',*args,**kwargs):
+	generator = getattr(_generator, '{}Generator'.format(name))
+	assert ischildof(generator, _generator.Generator)
+	return generator(*args,**kwargs)
