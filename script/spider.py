@@ -70,14 +70,19 @@ def user_weibo_update(db,uid,min_id):
 	while scan_page(uid,page,min_id):
 		page += 1
 
-	cursor.execute("SELECT id,uid FROM weibo_index WHERE uid=%s ORDER BY id DESC LIMIT 1")
-	max_mid,_ = cursor.fetchone()
-	try:
-		cursor.execute("UPDATE weibo_user SET max_mid=%s WHERE id=%s",(max_mid,uid))
-		db.commit()
-	except:
-		db.rollback()
-		raise
+	update_max_mid(db,uid)
+
+
+def update_max_mid(db,uid):
+	cursor = db.cursor()
+	if cursor.execute("SELECT id,user_id FROM weibo_index WHERE user_id=%s ORDER BY id DESC LIMIT 1",(uid,)):
+		max_mid,_ = cursor.fetchone()
+		try:
+			cursor.execute("UPDATE weibo_user SET max_mid=%s WHERE id=%s",(max_mid,uid))
+			db.commit()
+		except:
+			db.rollback()
+			raise
 
 
 def user_update(db,id):
@@ -153,6 +158,8 @@ def scan_user_all(db,uid,restart=False):
 		db.rollback()
 		raise
 
+	update_max_mid(db,uid)
+
 def get_retweeted_status(id):
 	data = client.status(id)
 	if data is None:
@@ -172,7 +179,7 @@ def weibo_api(db,id,operation='insert'):
 	cursor = db.cursor()
 	content = client.status(id,decode=False)
 	if content is not None:
-		with urllib.request.urlopen('http://localhost/weibo/api/{}_weibo.php'.format(operation),urllib.parse.urlencode({"data":content}).encode("ascii")) as f:
+		with urllib.request.urlopen('http://localhost/weibo/api/operate.php'.format(operation),urllib.parse.urlencode({"data":content,"operation":operation}).encode("ascii")) as f:
 			reponse = f.read().decode()
 			result = json.loads(reponse)
 			if result['errorCode'] != "0" and result['errorCode'] != "101":
