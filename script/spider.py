@@ -10,7 +10,6 @@ socket.setdefaulttimeout(5)
 
 global count
 count = 0
-confirm_num = config.get_parser().getint('scan','confirm_num')
 client = config.get_weibo_client()
 if not client.st:
 	client.login()
@@ -40,13 +39,14 @@ def scan_page(uid,page,min_id = 0, request_count = 1):
 				while not retweeted_status['id']:
 					print('retweeted_id is empty, try the other way, weibo_id: ' + id)
 					retweeted_status = get_retweeted_status(id)
-				single_weibo(retweeted_status)
+				single_weibo(db,retweeted_status)
 
-			single_weibo(card['mblog'])
+			single_weibo(db,card['mblog'])
 
 	return True
 
-def single_weibo(status):
+def single_weibo(db,status):
+	cursor = db.cursor()
 	if status['user'] is None:
 		print('weibo_id: {} no user, maybe deleted.')
 	else:
@@ -60,7 +60,7 @@ def single_weibo(status):
 				print('{}. [Edited] Updating user: {} weibo_id: {}'.format(count,screen_name,status['id']))
 				weibo_api(db,status['id'],'update')
 
-def user_weibo_update(db,uid,min_id):
+def user_weibo_update(db,uid):
 	cursor = db.cursor()
 	
 	user_update(db,uid)
@@ -179,7 +179,7 @@ def weibo_api(db,id,operation='insert'):
 	cursor = db.cursor()
 	content = client.status(id,decode=False)
 	if content is not None:
-		with urllib.request.urlopen('http://localhost/weibo/api/operate.php'.format(operation),urllib.parse.urlencode({"data":content,"operation":operation}).encode("ascii")) as f:
+		with urllib.request.urlopen('http://localhost/weibo/api/operate.php',urllib.parse.urlencode({"data":content,"operation":operation}).encode("ascii")) as f:
 			reponse = f.read().decode()
 			result = json.loads(reponse)
 			if result['errorCode'] != "0" and result['errorCode'] != "101":
@@ -189,6 +189,6 @@ if __name__ == '__main__':
 	db = config.get_db_connect()
 	users = config.get_scan_users()
 	for uid in users:
-		scan_user_all(db,uid,restart=False)
-		#user_weibo_update(db,uid,min_id="4282634743679613")
+		#scan_user_all(db,uid,restart=False)
+		user_weibo_update(db,uid)
 	db.close()

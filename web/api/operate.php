@@ -22,14 +22,6 @@ try {
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $conn->beginTransaction();
 
-    $sth = $conn->prepare("SELECT id FROM weibo_index WHERE id=:id");
-    $sth->bindParam(':id', $data['status']['id']);
-    $sth->execute();
-    if ($sth->fetch()) {
-        $results["errorCode"] = "101";
-        $results["message"]   = "id is exist.";
-    } else {
-
         $created_at   = date('Y-m-d H:i:s', strtotime($data['status']['created_at']));
         $retweeted_id = null;
         $pic_ids      = null;
@@ -48,9 +40,11 @@ try {
         }
 
         if ($operation == 'update') {
-            $sql = "UPDATE weibo_index SET text=:text , user_screen_name=:user_screen_name , reposts_count=:reposts_count , comments_count=:comments_count , attitudes_count=:attitudes_count , original_data=:original_data , pic_ids=:pic_ids, page_info=:page_info, edit_count=:edit_count WHERE id=:id";
+            $sql = "UPDATE weibo_index SET text=:text , user_screen_name=:user_screen_name , reposts_count=:reposts_count , comments_count=:comments_count , attitudes_count=:attitudes_count , original_data=:original_data , pic_ids=:pic_ids, page_info=:page_info, edit_count=:edit_count, edit_at=:edit_at WHERE id=:id";
             $sth = $conn->prepare($sql);
             $sth->bindParam(':edit_count', $data['status']['edit_count']);
+        $edit_at   = date('Y-m-d H:i:s', strtotime($data['status']['edit_at']));
+            $sth->bindParam(':edit_at', $edit_at);
         } else {
             $sql = "INSERT INTO weibo_index (id , created_at , text , user_id , user_screen_name , reposts_count , comments_count , attitudes_count , bid , original_data , retweeted_id , pic_ids, page_info) VALUES (:id , :created_at , :text , :user_id , :user_screen_name , :reposts_count , :comments_count , :attitudes_count , :bid , :original_data , :retweeted_id , :pic_ids , :page_info)";
             $sth = $conn->prepare($sql);
@@ -124,7 +118,6 @@ try {
 
         $results["errorCode"] = "0";
         $results["message"]   = "ok";
-    }
 } catch (PDOException $e) {
     $conn->rollBack();
     $results["errorCode"] = "200";
