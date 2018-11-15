@@ -4,7 +4,7 @@ import os, json, time, re, socket, ssl
 import demjson
 
 class MWeiboCn:
-	def __init__(self,username,password,proxy_handler=None,cookie_file='weibo.cookie',
+	def __init__(self,username = None, password = None, proxy_handler=None,cookie_file='weibo.cookie',
 		normal_request_interval=1,error_request_interval=5,auto_retry=True,retry_times=5):
 
 		self.error_count = 0
@@ -27,6 +27,7 @@ class MWeiboCn:
 		]
 		if proxy_handler:
 			self.opener.add_handler(proxy_handler)
+		#self.send('https://m.weibo.cn')
 		self.update_st()
 
 	def _send(self,url,data='',headers=[],method=''):
@@ -115,7 +116,13 @@ class MWeiboCn:
 		#self.update_st()
 		return True if self.st else False
 
-	def login(self):
+	def login(self, username = None, password = None):
+		if self.username is None:
+			if username is None:
+				raise Exception('No username.')
+			else:
+				self.username = username
+				self.password = password
 		'''
 		登录,暂未处理验证问题
 		request = urllib.request.Request('https://m.weibo.cn')
