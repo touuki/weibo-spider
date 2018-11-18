@@ -3,7 +3,6 @@ import weibo
 import configparser
 import os
 import sys
-sys.path.append('..')
 import proxy
 
 global _cf,_proxy_generator
