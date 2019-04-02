@@ -18,8 +18,7 @@ def download(pid,url,dr):
 		if exitcode == 0:
 			cursor.execute("UPDATE weibo_pic_" + dr + " SET status=%s WHERE pid=%s",(1,pid))
 		elif exitcode == 8:
-			pass
-			#cursor.execute("UPDATE weibo_pic_" + dr + " SET status=%s WHERE pid=%s",(2,pid))
+			cursor.execute("UPDATE weibo_pic_" + dr + " SET status=%s WHERE pid=%s",(2,pid))
 		db.commit()
 	except:
 		db.rollback()
@@ -33,15 +32,20 @@ num_pro = 10
 pool = multiprocessing.Pool(processes = num_pro)
 db = config.get_db_connect()
 cursor = db.cursor()
-cursor.execute("SELECT pid,url FROM weibo_pic_orj360 WHERE status=2")
+cursor.execute("SELECT pid,url FROM weibo_pic_orj360 WHERE status=1 AND update_time>'2019-2-21'")
 pics = cursor.fetchall()
 for pid,url in pics:
-	pool.apply_async(download,(pid,url,"orj360"))
+	filename = "/var/www/weibo/image/%s/%s/%s.%s" % ('orj360',pid[:12],pid,url[url.rindex(r'.') + 1:])		
+	if not os.path.exists(filename):
+		pool.apply_async(download,(pid,url,"orj360"))
 
-cursor.execute("SELECT pid,url FROM weibo_pic_large WHERE status=2")
+cursor.execute("SELECT pid,url FROM weibo_pic_large WHERE status=1 AND update_time>'2019-2-21'")
 pics = cursor.fetchall()
 for pid,url in pics:
-	pool.apply_async(download,(pid,url,"large"))
+	filename = "/var/www/weibo/image/%s/%s/%s.%s" % ('large',pid[:12],pid,url[url.rindex(r'.') + 1:])		
+	if not os.path.exists(filename):
+		print(url)
+		pool.apply_async(download,(pid,url,"large"))
 
 db.close()
 pool.close()

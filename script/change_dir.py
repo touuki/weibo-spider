@@ -22,7 +22,6 @@ def move(pid,typ):
 		db.rollback()
 		raise
 
-
 db = config.get_db_connect()
 cursor = db.cursor()
 

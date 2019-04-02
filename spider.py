@@ -214,7 +214,7 @@ def weibo_api(id,operation='insert'):
 def update_pic(pic,mid):
 	if not cursor.execute('SELECT pid FROM weibo_pic WHERE pid=%s',(pic['pid'],)):
 		cursor.execute('INSERT INTO weibo_pic (pid , type , mid) VALUES (%s , %s , %s)',(pic['pid'],pic['url'].split('.')[-1],mid))
-		orj360_height = pic['geo']['height']
+		orj360_height = int(pic['geo']['height'])
 		if orj360_height > 1200:
 			orj360_height = 1200
 		cursor.execute('INSERT INTO weibo_pic_orj360 (pid , width , height , croped , url) VALUES (%s , %s , %s , %s , %s)',
@@ -222,7 +222,7 @@ def update_pic(pic,mid):
 		cursor.execute('INSERT INTO weibo_pic_large (pid , width , height , croped , url) VALUES (%s , %s , %s , %s , %s)',
 			(pic['pid'],pic['large']['geo']['width'],pic['large']['geo']['height'],pic['large']['geo']['croped'],pic['large']['url']))
 
-def scan_comments(mid,page):
+def scan_comments(mid,page,uids=None):
 	
 	data = client.comments_show(mid,page)
 	#已扫描完退出，访问太频繁有几率不返回内容，故多请求几次
@@ -231,14 +231,15 @@ def scan_comments(mid,page):
 	try:
 		data = data['data']
 		print("mid: %s page: %s" % (mid,page))
-		for comment in data:
-			if not cursor.execute('SELECT id FROM weibo_comment WHERE id=%s',(comment['id'],)):
+		for comment in data['data']:
+			if not cursor.execute('SELECT id FROM weibo_comment WHERE id=%s',(comment['id'],)) and (uids is None or comment['user']['id'] in uids):
 				if 'pic' in comment:
 					pic_id = comment['pic']['pid']
-					update_pic(comment['pic'])
+					update_pic(comment['pic'],mid)
 				else:
 					pic_id = None
-				cursor.execute('INSERT INTO weibo_comment (id, text, created_at, pic_id, user_id) VALUES (%s,%s,%s,%s,%s)',(comment['id'],comment['text'],comment['created_at'],pic_id,comment['user']['id']))
+				cursor.execute('INSERT INTO weibo_comment (id, text, created_at, pic_id, mid,  user_id) VALUES (%s,%s,%s,%s,%s,%s)',
+						(comment['id'],comment['text'],comment['created_at'],pic_id,mid,comment['user']['id']))
 
 		db.commit()
 		return True
@@ -246,13 +247,7 @@ def scan_comments(mid,page):
 		db.rollback()
 		raise
 
-def scan_all_comments(mid,restart=False):
-	if not cursor.execute("SELECT id,comments_page FROM weibo_index WHERE id=%s",(mid,)):
-		return
-
-	#page为已经扫描到的页数
-	_,page = cursor.fetchone()
-
+def scan_all_comments(mid,page,uids=None,restart=False):
 	if page<0:
 		if restart:
 			page = 1
@@ -261,7 +256,7 @@ def scan_all_comments(mid,restart=False):
 	else:
 		page += 1
 
-	while scan_comments(mid,page):
+	while scan_comments(mid,page,uids):
 		try:
 			cursor.execute("UPDATE weibo_index SET comments_page=%s WHERE id=%s",(page,mid))
 			db.commit()
@@ -270,6 +265,8 @@ def scan_all_comments(mid,restart=False):
 			raise
 		page += 1
 
+	if page == 1:
+		page += 1
 	try:
 		cursor.execute("UPDATE weibo_index SET comments_page=%s WHERE id=%s",(-page+1,mid))
 		db.commit()
@@ -284,4 +281,7 @@ if __name__ == '__main__':
 	for uid in users:
 		#scan_user_all(uid,restart=False)
 		user_weibo_update(uid)
+		#cursor.execute("SELECT id,comments_page FROM weibo_index WHERE user_id=%s",(uid,))
+		#for mid,page in cursor.fetchall():
+		#	scan_all_comments(mid,page,[int(uid)])
 	db.close()

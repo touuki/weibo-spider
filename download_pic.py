@@ -9,7 +9,7 @@ def download(pid,url,dr):
 	db = config.get_db_connect()
 	cursor = db.cursor()
 	try:
-		file_dir = "/var/www/html/weibo/image/%s/%s" % (dr,pid[:12])		
+		file_dir = "/var/www/weibo/image/%s/%s" % (dr,pid[:12])		
 		if not os.path.exists(file_dir):
 			os.mkdir(file_dir)
 		typ = url[url.rindex(r'.') + 1:]
