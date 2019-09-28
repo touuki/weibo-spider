@@ -1,1 +1,0 @@
-print('{}www%s'.format(111))
