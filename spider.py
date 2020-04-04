@@ -49,7 +49,7 @@ def scan_page(uid,page,min_id = 0, request_count = 1):
 def single_weibo(status):
 	
 	if status['user'] is None:
-		print('weibo_id: {} no user, maybe deleted.')
+		print('weibo_id: {} no user, maybe deleted.'.format(status['id']))
 	else:
 		screen_name = status['user']['screen_name']
 		if not cursor.execute("SELECT id,edit_count FROM weibo_index WHERE id=%s",(status['id'],)):
@@ -168,9 +168,12 @@ def weibo_api(id,operation='insert'):
 	global count
 	count += 1
 	content = client.status(id,decode=False)
-	status = json.loads(content)['status']
-	sql_data = {}
-	if content is not None:
+	if content is None:
+		print('Content is None, retrying.')
+		weibo_api(id,operation)
+	else:
+		status = json.loads(content)['status']
+		sql_data = {}
 		try:
 			sql_data['edit_count'] = 0 if 'edit_count' not in status else status['edit_count']
 			sql_data['edit_at'] = None if 'edit_at' not in status else datetime.datetime.strptime(status['edit_at'], '%a %b %d %H:%M:%S %z %Y')
